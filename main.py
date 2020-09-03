@@ -3,23 +3,23 @@ import speech_recognition as sr
 import requests
 from telebot import types
 from telebot.types import Message
-import threading
 from pydub import AudioSegment
 import os
+from config import SRC, DST, BOT_TOKEN, languages
+
 os.sys.path.append(os.getcwd())
 
 AudioSegment.converter = os.path.join(os.getcwd(), 'ffmpeg')
-SRC = "voice.ogg"
-DST = "voice.wav"
 
-BOT_TOKEN = '1289493438:AAFEKtVsPq9xBNmrfYIuKkSHdGFWFmuJPa0'
 AUDIO_FILE = 'voice.wav'
 wav_path = ''
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-write_f_t = threading.Thread()
-recognize_speech_t = threading.Thread()
+LANGUAGE = {
+
+}
+
 
 @bot.message_handler(content_types=['voice'])
 def repeat_messages(message: Message):
@@ -30,7 +30,7 @@ def repeat_messages(message: Message):
     with open('voice.ogg', 'wb') as f:
         f.write(file.content)
 
-    sound = AudioSegment.from_ogg(SRC) 
+    sound = AudioSegment.from_ogg(SRC)
     sound.export(DST, format="wav")
 
     r = sr.Recognizer()
@@ -39,11 +39,29 @@ def repeat_messages(message: Message):
         audio = r.record(source)
 
         try:
-            bot.send_message(message.chat.id, r.recognize_google(audio, language = "ru-RU"))
+            bot.send_message(message.chat.id, r.recognize_google(
+                audio, language=LANGUAGE[message.chat.id]))
         except sr.UnknownValueError:
             bot.send_message(message.chat.id, "Повтори внятно")
         except sr.RequestError as e:
-            bot.send_message(message.chat.id, "Чет сервак упал, напиши в личку, поифксим @rymperit")
+            bot.send_message(
+                message.chat.id, "Чет сервак упал, напиши в личку, пофиксим\n @rymperit")
+
+
+@bot.message_handler(commands=['start', 'settings'], content_types=['text'])
+def language_selector(message: Message):
+    print(message.chat.id)
+    markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+    btns = [types.KeyboardButton(lang) for lang in languages]
+    for i in range(1, 2):
+        markup.row(*btns[i * 2 - 2:i * 2])
+    bot.send_message(message.chat.id, "Choose action:", reply_markup=markup)
+
+
+@bot.message_handler(content_types=['text'])
+def set_language(message: Message):
+    if message.text in languages:
+        LANGUAGE[message.chat.id] = message.text
 
 
 if __name__ == '__main__':
